@@ -518,7 +518,9 @@ export interface ApiClubPageClubPage extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
+    banner: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     category: Schema.Attribute.Relation<'oneToOne', 'api::category.category'>;
+    color: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
