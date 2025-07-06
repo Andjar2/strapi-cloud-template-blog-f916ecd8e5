@@ -29,6 +29,9 @@
     },
     "showInFooter": {
       "type": "boolean"
+    },
+    "order": {
+      "type": "integer"
     }
   }
 }
