@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "club_pages",
+  "info": {
+    "singularName": "club-page",
+    "pluralName": "club-pages",
+    "displayName": "ClubPage"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "nombre": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "nombre"
+    },
+    "slogan": {
+      "type": "text"
+    },
+    "logo": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "category": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::category.category"
+    },
+    "menuItems": {
+      "type": "component",
+      "component": "shared.menu-item",
+      "repeatable": true
+    }
+  }
+}
