@@ -1,0 +1,510 @@
+ Sección Noticias (Articulos)
+📈 Suma de puntos
+Acción	Puntos	Límite diario
+Visitar la sección por la mañana	+10	1 vez por día
+Visitar la sección por la tarde	+10	1 vez por día
+Leer una noticia	+1	Hasta 10 noticias
+Comentar en una noticia	+2	Hasta 10 comentarios
+Votar positivamente un comentario	+1	Hasta 10 votos emitidos
+Recibir un voto positivo en tu comentario	+1	Hasta 10 votos recibidos
+
+📉 Resta de puntos
+Acción	Puntos
+Recibir voto negativo en tu comentario	-1
+Comentario eliminado por spam/moderación	-5
+
+💬 Sección Foro
+📈 Suma de puntos
+Acción	Puntos	Límite diario
+Visitar la sección del foro	+15	1 vez por día
+Crear un nuevo topic	+5	Hasta 3 por día
+Comentar en un topic	+2	Hasta 10 comentarios
+Reaccionar a un mensaje	+1	Hasta 10 reacciones emitidas
+Recibir una reacción en un mensaje	+1	Sin límite
+Responder una pregunta (tipo de topic especial)	+3	Hasta 10 respuestas
+
+📉 Resta de puntos
+Acción	Puntos
+Recibir una reacción negativa en un mensaje	-1
+Post eliminado por spam/moderación	-5
+
+EXTRAS
+Seguir en Instagram (verificar automaticamente) +100
+Dar Like en Instagram (verificar automaticamente) +2 Limite diario 10 puntos
+Seguir en Facebook (verificar automaticamente) +100
+Usuario no gana puntos en un dia -50 
+
+
+MECÁNICAS EXTRA 
+Niveles de usuario (según puntos acumulados)
+Nivel	Requisitos
+Novato	0 – 199 pts
+Hincha Activo	200 – 499 pts
+Fanático	500 – 999 pts
+Ídolo	1000+ pts
+
+Insignias (Badges)
+Nombre	Condición
+Primer Gol	Primer comentario o topic
+Capitán del Foro	100 publicaciones en el foro
+Comentarista del Mes	+200 puntos en comentarios ese mes
+Votado al Álbum	50 votos positivos acumulados
+
+// src/components/UserNav.tsx
+"use client";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/hooks/use-auth";
+import Link from "next/link";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import NotificationsDropdown from "./NotificationsDropdown";
+
+export default function UserNav() {
+  const { user, userProfile, loading } = useAuth();
+
+  // Log para depuración: muestra el estado actual de las variables
+  console.log("UserNav render - Estado actual:", { user, userProfile, loading });
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    }
+  };
+
+  // 1. Si el contexto está cargando, muestra un botón de carga
+  if (loading) {
+    return <Button variant="ghost" size="sm">Cargando...</Button>;
+  }
+
+  // 2. Si no hay usuario autenticado, muestra el botón de iniciar sesión
+  if (!user) {
+    return (
+      <Link href="/login" passHref>
+        <Button variant="default">Iniciar Sesión</Button>
+      </Link>
+    );
+  }
+  
+  // 3. Si hay un usuario pero el perfil aún no se ha cargado (estado transitorio), muestra "Cargando..."
+  // Esto debería ser muy breve si el AuthContext funciona correctamente.
+  if (!userProfile) {
+    console.warn("UserNav: Usuario autenticado pero perfil no disponible. Mostrando cargando...");
+    return <Button variant="ghost" size="sm">Cargando...</Button>;
+  }
+
+  // 4. Si el usuario y el perfil están disponibles, muestra el menú de usuario
+  const profileLink = `/profile/@${userProfile.displayName}`;
+
+  return (
+    <div className="flex items-center space-x-2">
+        <NotificationsDropdown />
+        <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+            <Avatar className="h-8 w-8">
+                <AvatarImage src={userProfile.photoURL || ""} alt={userProfile.displayName || "User"} />
+                <AvatarFallback>{userProfile.displayName?.[0] || 'U'}</AvatarFallback>
+            </Avatar>
+            </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{userProfile.displayName}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                {user.email}
+                </p>
+            </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+            <Link href={profileLink} passHref>
+                <DropdownMenuItem>
+                Perfil
+                </DropdownMenuItem>
+            </Link>
+            <Link href="/profile/edit" passHref>
+                <DropdownMenuItem>
+                Ajustes
+                </DropdownMenuItem>
+            </Link>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout}>
+            Cerrar sesión
+            </DropdownMenuItem>
+        </DropdownMenuContent>
+        </DropdownMenu>
+    </div>
+  );
+}
+// src/components/PostCard.tsx
+import Link from 'next/link';
+import { Post, UserProfile } from '@/types';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  MessageSquare, ThumbsUp, Medal, ShieldAlert, Star, TrendingUp, ShieldCheck, Share2, MoreVertical, Edit, Trash2
+} from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { getLevelName, updateUserStats } from '@/lib/gamification';
+import { db } from '@/lib/firebase';
+import { doc, runTransaction, collection, getDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+interface PostCardProps {
+    post: Post;
+    isDetailPage?: boolean;
+    onReport?: (contentId: string, authorId: string) => void;
+    onDelete?: () => void;
+}
+
+const PostCard = ({ post, isDetailPage = false, onReport, onDelete }: PostCardProps) => {
+    const { userProfile } = useAuth();
+    const { toast } = useToast();
+    
+    const [authorProfile, setAuthorProfile] = useState<Partial<UserProfile> | null>(post.authorProfile || null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedTitle, setEditedTitle] = useState(post.title);
+    const [editedContent, setEditedContent] = useState(post.content);
+
+    useEffect(() => {
+        const fetchAuthorProfile = async () => {
+            if (!post.authorProfile && post.authorId) {
+                const userDocRef = doc(db, 'users', post.authorId);
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists()) {
+                    setAuthorProfile(userDoc.data() as UserProfile);
+                }
+            }
+        };
+        fetchAuthorProfile();
+    }, [post.authorId, post.authorProfile]);
+
+    const handleEdit = async () => {
+        if (!editedTitle || !editedContent) {
+            toast({ title: "Error", description: "El título y el contenido no pueden estar vacíos.", variant: "destructive" });
+            return;
+        }
+        try {
+            const postRef = doc(db, 'posts', post.id);
+            await updateDoc(postRef, {
+                title: editedTitle,
+                content: editedContent
+            });
+            toast({ title: "Publicación actualizada" });
+            setIsEditing(false);
+        } catch (error) {
+            console.error("Error actualizando la publicación:", error);
+            toast({ title: "Error", description: "No se pudo actualizar la publicación.", variant: "destructive" });
+        }
+    };
+
+    const handleDelete = async () => {
+        if (window.confirm("¿Estás seguro de que quieres eliminar esta publicación? Se restarán los puntos al autor original. Esta acción no se puede deshacer.")) {
+            try {
+                await updateUserStats(post.authorId, 'CREATE_POST', 'subtract');
+                await deleteDoc(doc(db, 'posts', post.id));
+                if (onDelete) onDelete();
+                toast({ title: "Publicación eliminada" });
+                if (isDetailPage) window.location.href = '/forum';
+            } catch (error) {
+                console.error("Error eliminando la publicación:", error);
+                toast({ title: "Error", description: "No se pudo eliminar la publicación.", variant: "destructive" });
+            }
+        }
+    };
+    
+    const handleShare = async (platform: 'Twitter' | 'Facebook' | 'CopyLink') => {
+        const postUrl = `${window.location.origin}/forum/post/${post.slug}`; // Use slug
+        let shareUrl = '';
+        switch (platform) {
+            case 'Twitter':
+                shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(post.title)}`;
+                break;
+            case 'Facebook':
+                shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`;
+                break;
+            case 'CopyLink':
+                await navigator.clipboard.writeText(postUrl);
+                toast({ title: '¡Enlace copiado al portapapeles!' });
+                return;
+        }
+        window.open(shareUrl, '_blank', 'noopener,noreferrer');
+    };
+    
+    const contentToShow = isDetailPage ? post.content : `${post.content.substring(0, 200)}...`;
+    const levelName = authorProfile ? (typeof authorProfile.level === 'number' ? getLevelName(authorProfile.level) : authorProfile.level) : 'Debutante';
+    const canManage = userProfile && (userProfile.role === 'admin' || userProfile.role === 'moderator' || userProfile.uid === post.authorId);
+
+    return (
+        <Card className="bg-gray-900 border-gray-700 overflow-hidden">
+            <div className="flex">
+                <div className="w-1/4 sm:w-1/5 md:w-1/6 bg-gray-800 p-4 flex flex-col items-center justify-center text-center">
+                    <Link href={`/profile/${post.authorId}`} passHref>
+                        <Avatar className="h-16 w-16 mb-2 cursor-pointer">
+                            <AvatarImage src={authorProfile?.photoURL} alt={post.author} />
+                            <AvatarFallback>{post.author.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                    </Link>
+                    <h4 className="font-bold text-white hover:underline">
+                        <Link href={`/profile/${post.authorId}`}>{post.author}</Link>
+                    </h4>
+                    {authorProfile && (
+                        <div className="flex flex-col items-center gap-1 mt-2">
+                           <Badge variant="secondary">{levelName}</Badge>
+                            <div className="text-xs text-gray-400 mt-1 space-y-1">
+                                <div className="flex items-center gap-1"><Star size={14} />{authorProfile.points || 0} Pts</div>
+                                <div className="flex items-center gap-1"><TrendingUp size={14} />{authorProfile.postCount || 0} Posts</div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="w-3/4 sm:w-4/5 md:w-5/6 p-4 flex flex-col">
+                    <CardHeader className="p-0 flex-row justify-between items-start">
+                        <div>
+                            {isEditing ? (
+                                <Input
+                                    value={editedTitle}
+                                    onChange={(e) => setEditedTitle(e.target.value)}
+                                    className="text-xl bg-gray-700"
+                                />
+                            ) : (
+                                <CardTitle>
+                                    <Link href={`/forum/post/${post.slug}`} className="text-xl text-orange-500 hover:underline">{post.title}</Link>
+                                </CardTitle>
+                            )}
+                            <p className="text-xs text-gray-400">
+                                Publicado el {post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleString('es-ES') : '...'}
+                            </p>
+                        </div>
+                        {canManage && !isEditing && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        <span>Editar</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={handleDelete} className="text-red-500">
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        <span>Eliminar</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </CardHeader>
+                    <CardContent className="p-0 pt-2 flex-grow">
+                        {isEditing ? (
+                            <Textarea
+                                value={editedContent}
+                                onChange={(e) => setEditedContent(e.target.value)}
+                                className="bg-gray-700 min-h-[150px]"
+                                rows={6}
+                            />
+                        ) : (
+                            <>
+                                <p className="text-gray-300 whitespace-pre-wrap">{contentToShow}</p>
+                                {!isDetailPage && post.content.length > 200 && (
+                                    <Link href={`/forum/post/${post.slug}`} className="text-orange-500 hover:underline text-sm font-bold mt-2 inline-block">
+                                        Ver discusión completa
+                                    </Link>
+                                )}
+                            </>
+                        )}
+                    </CardContent>
+                    <CardFooter className="p-0 pt-4 flex justify-between items-center text-gray-400">
+                        {isEditing ? (
+                            <div className="flex gap-2">
+                                <Button onClick={handleEdit}>Guardar</Button>
+                                <Button variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-1 sm:gap-2">
+                                   </div>
+                                <div className="flex items-center gap-2">
+                                    <Link href={`/forum/post/${post.slug}`} className="flex items-center gap-1 text-xs hover:underline">
+                                        <MessageSquare size={14} /> {post.commentCount || 0} Comentarios
+                                    </Link>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><Share2 size={14} className="mr-1" /> Compartir</Button></DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onClick={() => handleShare('Twitter')}>Twitter</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleShare('Facebook')}>Facebook</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleShare('CopyLink')}>Copiar Enlace</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                            </>
+                        )}
+                    </CardFooter>
+                </div>
+            </div>
+        </Card>
+    );
+};
+
+export default PostCard;
+import { doc, runTransaction, increment } from 'firebase/firestore';
+import { db } from './firebase';
+import { UserProfile } from '@/types';
+
+export type GamificationAction =
+  | 'CREATE_POST'
+  | 'CREATE_ARTICLE'
+  | 'CREATE_COMMENT'
+  | 'CREATE_ARTICLE_COMMENT'
+  | 'RECEIVE_LIKE'
+  | 'RECEIVE_GOLAZO'
+  | 'RECEIVE_RED_CARD'
+  | 'SOCIAL_SHARE';
+
+export type GamificationOperation = 'add' | 'subtract';
+
+const POINTS_CONFIG: Record<GamificationAction, number> = {
+  CREATE_POST: 10,
+  CREATE_ARTICLE: 50,
+  CREATE_COMMENT: 5,
+  CREATE_ARTICLE_COMMENT: 5,
+  RECEIVE_LIKE: 2,
+  RECEIVE_GOLAZO: 5,
+  RECEIVE_RED_CARD: -10,
+  SOCIAL_SHARE: 15,
+};
+
+const LEVELS_CONFIG = [
+    { level: 1, name: "Debutante", points: 0 },
+    { level: 2, name: "Promesa", points: 100 },
+    { level: 3, name: "Titular", points: 300 },
+    { level: 4, name: "Estrella", points: 700 },
+    { level: 5, name: "Leyenda", points: 1500 },
+];
+
+export const getLevel = (points: number) => {
+    const currentLevel = LEVELS_CONFIG.slice().reverse().find(l => points >= l.points);
+    return currentLevel ? currentLevel.level : 1;
+};
+  
+export const getLevelName = (level: number) => {
+    const currentLevel = LEVELS_CONFIG.find(l => l.level === level);
+    return currentLevel ? currentLevel.name : 'Debutante';
+};
+
+export const updateUserStats = async (
+    userId: string,
+    action: GamificationAction,
+    operation: GamificationOperation = 'add'
+  ) => {
+    if (!userId) return;
+  
+    const userDocRef = doc(db, 'users', userId);
+  
+    try {
+      await runTransaction(db, async (transaction) => {
+        const userDoc = await transaction.get(userDocRef);
+        if (!userDoc.exists()) {
+          console.error("Gamification Error: User document not found for ID:", userId);
+          return;
+        }
+        
+        const userData = userDoc.data() as UserProfile;
+        const multiplier = operation === 'add' ? 1 : -1;
+        const pointsToChange = (POINTS_CONFIG[action] || 0) * multiplier;
+        const newPoints = (userData.points || 0) + pointsToChange;
+        
+        const newLevelNumber = getLevel(newPoints);
+        const newLevelName = getLevelName(newLevelNumber);
+
+        const updateData: { [key: string]: any } = {
+          points: newPoints,
+          level: newLevelName,
+        };
+  
+        const countIncrement = operation === 'add' ? 1 : -1;
+
+        switch (action) {
+          case 'CREATE_POST':
+            updateData.postCount = increment(countIncrement);
+            break;
+          case 'CREATE_ARTICLE':
+            updateData.articleCount = increment(countIncrement);
+            break;
+          case 'CREATE_COMMENT':
+          case 'CREATE_ARTICLE_COMMENT':
+            updateData.commentCount = increment(countIncrement);
+            break;
+          case 'SOCIAL_SHARE':
+             if (operation === 'add') {
+                updateData.shareCount = increment(1);
+            }
+            break;
+        }
+  
+        transaction.update(userDocRef, updateData);
+      });
+    } catch (error) {
+      console.error(`Gamification Error updating stats for action ${action}:`, error);
+    }
+  };
+  
+  export const updateReactionStats = async (userId: string, reactionType: 'like' | 'golazo' | 'redCard', incrementValue: boolean) => {
+    if (!userId) return;
+  
+    const userDocRef = doc(db, 'users', userId);
+    const value = incrementValue ? 1 : -1;
+  
+    try {
+      await runTransaction(db, async (transaction) => {
+        const userDoc = await transaction.get(userDocRef);
+        if (!userDoc.exists()) {
+          console.error("Gamification Error: User document not found for ID:", userId);
+          return;
+        }
+  
+        const userData = userDoc.data() as UserProfile;
+        const action = reactionType === 'like' ? 'RECEIVE_LIKE' : reactionType === 'golazo' ? 'RECEIVE_GOLAZO' : 'RECEIVE_RED_CARD';
+        const pointsToAdd = (POINTS_CONFIG[action] || 0) * value;
+        const newPoints = (userData.points || 0) + pointsToAdd;
+        
+        const newLevelNumber = getLevel(newPoints);
+        const newLevelName = getLevelName(newLevelNumber);
+  
+        const updateData: { [key: string]: any } = {
+          points: newPoints,
+          level: newLevelName,
+        };
+  
+        transaction.update(userDocRef, updateData);
+      });
+    } catch (error) {
+      console.error(`Gamification Error updating reaction stats for ${reactionType}:`, error);
+    }
+  };

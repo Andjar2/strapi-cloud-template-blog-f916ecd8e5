@@ -13,7 +13,9 @@
   "pluginOptions": {},
   "attributes": {
     "title": {
-      "type": "string"
+      "type": "string",
+      "required": true,
+      "unique": true
     },
     "description": {
       "type": "text",
@@ -21,7 +23,8 @@
     },
     "slug": {
       "type": "uid",
-      "targetField": "title"
+      "targetField": "title",
+      "required": true
     },
     "cover": {
       "type": "media",
@@ -33,11 +36,11 @@
         "videos"
       ]
     },
-    "author": {
+    "authors": {
       "type": "relation",
-      "relation": "manyToOne",
+      "relation": "oneToMany",
       "target": "api::author.author",
-      "inversedBy": "articles"
+      "mappedBy": "article"
     },
     "category": {
       "type": "relation",
@@ -53,6 +56,11 @@
         "shared.rich-text",
         "shared.slider"
       ]
+    },
+    "seo": {
+      "type": "component",
+      "component": "shared.seo",
+      "repeatable": true
     }
   }
 }
