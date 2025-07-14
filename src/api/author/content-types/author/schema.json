@@ -30,9 +30,9 @@
     },
     "article": {
       "type": "relation",
-      "relation": "manyToOne",
+      "relation": "oneToOne",
       "target": "api::article.article",
-      "inversedBy": "authors"
+      "mappedBy": "author"
     }
   }
 }

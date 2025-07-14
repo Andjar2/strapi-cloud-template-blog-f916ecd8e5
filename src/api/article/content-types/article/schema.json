@@ -36,11 +36,11 @@
         "videos"
       ]
     },
-    "authors": {
+    "author": {
       "type": "relation",
-      "relation": "oneToMany",
+      "relation": "oneToOne",
       "target": "api::author.author",
-      "mappedBy": "article"
+      "inversedBy": "article"
     },
     "category": {
       "type": "relation",
