@@ -538,6 +538,7 @@ export interface ApiClubPageClubPage extends Struct.CollectionTypeSchema {
     menuItems: Schema.Attribute.Component<'shared.menu-item', true>;
     nombre: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    seo: Schema.Attribute.Component<'shared.seo', false>;
     slogan: Schema.Attribute.Text;
     slug: Schema.Attribute.UID<'nombre'>;
     updatedAt: Schema.Attribute.DateTime;
