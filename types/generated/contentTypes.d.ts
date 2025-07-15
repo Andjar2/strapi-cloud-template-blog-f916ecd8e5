@@ -419,6 +419,8 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
       ['shared.media', 'shared.quote', 'shared.rich-text', 'shared.slider']
     >;
     category: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
+    color: Schema.Attribute.String &
+      Schema.Attribute.CustomField<'plugin::color-picker.color'>;
     cover: Schema.Attribute.Media<'images' | 'files' | 'videos'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -524,7 +526,9 @@ export interface ApiClubPageClubPage extends Struct.CollectionTypeSchema {
   attributes: {
     banner: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     category: Schema.Attribute.Relation<'oneToOne', 'api::category.category'>;
-    color: Schema.Attribute.String;
+    color: Schema.Attribute.String &
+      Schema.Attribute.CustomField<'plugin::color-picker.color'>;
+    ContentBottom: Schema.Attribute.RichText;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

@@ -10,7 +10,7 @@ module.exports = ({ env }) => ({
 
   // Configuración del plugin strapi-cache
   'strapi-cache': {
-    enabled: true,
+    enabled: false,
     config: {
       // **CORRECCIÓN AQUÍ: 'provider' debe ser una cadena**
       provider: 'memory', // O 'redis' si quieres usar Redis

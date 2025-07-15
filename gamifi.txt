@@ -810,3 +810,305 @@ export const addReaction = async (
         throw new Error("Failed to process reaction.");
     }
 };
+----------------------------------
+// src/lib/api.ts
+ import type { Article, Category, StrapiResponse, Team, Post, SinglePage, ClubPage, ForumCategory, Comment } from '@/types';
+ import { db } from './firebase';
+ import { 
+     collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, 
+     where, orderBy, runTransaction, getDoc, setDoc, increment
+ } from "firebase/firestore";
+ import { updateUserStats, GamificationAction } from './gamification';
+ import qs from 'qs';
+ 
+ // --- HELPERS ---
+ const API_URL = 'https://supreme-basket-665350ebeb.strapiapp.com';
+ 
+ export function getStrapiURL(path = ""): string {
+   if (path.startsWith('http')) return path;
+   return `${API_URL}${path}`;
+ }
+ 
+ function processStrapiResponse(data: any): any {
+   if (data === null || data === undefined) return null;
+   if (data.data) return processStrapiResponse(data.data);
+   if (data.attributes) {
+     const flattened = { id: data.id, ...data.attributes };
+     for (const key in flattened) {
+         flattened[key] = processStrapiResponse(flattened[key]);
+     }
+     return flattened;
+   }
+   if (Array.isArray(data)) return data.map(item => processStrapiResponse(item));
+   return data;
+ }
+ 
+ async function fetchAPI(path: string, urlParamsObject = {}, options = {}): Promise<any> {
+   try {
+     const mergedOptions = { headers: { 'Content-Type': 'application/json' }, ...options };
+     const queryString = qs.stringify(urlParamsObject, { encodeValuesOnly: true });
+     const requestUrl = getStrapiURL(`/api${path}${queryString ? `?${queryString}` : ''}`);
+     const response = await fetch(requestUrl, mergedOptions);
+     if (!response.ok) {
+         console.error('Response not OK for URL:', requestUrl);
+         console.error('Response status:', response.status);
+         console.error('Response text:', await response.text());
+         throw new Error(`An error occurred please try again`);
+     }
+     const data = await response.json();
+     return data;
+   } catch (error) {
+     console.error(error);
+     throw new Error('Failed to fetch API data. Please check the network connection.');
+   }
+ }
+ 
+ const slugify = (text: string): string => {
+   return text.toString().toLowerCase()
+     .replace(/\s+/g, '-')
+     .replace(/[^\w\-]+/g, '')
+     .replace(/\-\-+/g, '-')
+     .replace(/^-+/, '')
+     .replace(/-+$/, '');
+ }
+ 
+ // --- STRAPI API FUNCTIONS ---
+ export async function getArticles(params?: any): Promise<StrapiResponse<Article[]>> {
+     const urlParams = params || { populate: { cover: true, category: true }, sort: { publishedAt: 'desc' } };
+     const response = await fetchAPI('/articles', urlParams);
+     return { ...response, data: processStrapiResponse(response.data) };
+ }
+ export async function getLatestArticles(limit: number): Promise<Article[]> {
+   const params = { 
+     populate: { 
+       cover: true, 
+       category: true 
+     }, 
+     sort: { publishedAt: 'desc' }, 
+     pagination: { limit } 
+   };
+   const response = await fetchAPI('/articles', params);
+   return processStrapiResponse(response.data);
+ }
+ export async function getArticleBySlug(slug: string): Promise<Article | null> {
+     const params = { filters: { slug: { $eq: slug } }, populate: { seo: { populate: '*' }, blocks: { populate: '*' }, cover: true, category: true, author: true } };
+     const articlesResponse = await fetchAPI('/articles', params);
+     const articles = processStrapiResponse(articlesResponse.data);
+     return articles && articles.length > 0 ? articles[0] : null;
+ }
+ export async function getSinglePage(page: string): Promise<SinglePage | null> {
+     const params = { populate: { seo: { populate: '*' }, blocks: { populate: '*' } } };
+     const pageResponse = await fetchAPI(`/${page}`, params);
+     return processStrapiResponse(pageResponse.data);
+ }
+ export async function getCategories(): Promise<StrapiResponse<Category[]>> {
+     const response = await fetchAPI('/categories');
+     return { ...response, data: processStrapiResponse(response.data) };
+ }
+ export async function getCategoriesForFooter(): Promise<Category[]> {
+   const params = { filters: { showInFooter: { $eq: true } }, sort: { order: 'asc' } };
+   const response = await fetchAPI('/categories', params);
+   return processStrapiResponse(response.data);
+ }
+ export async function getArticlesByCategory(categorySlug: string): Promise<StrapiResponse<Article[]>> {
+     const params = { filters: { category: { slug: { $eq: categorySlug } } }, populate: { cover: true, category: true }, sort: { publishedAt: 'desc' } };
+     const response = await fetchAPI('/articles', params);
+     return { ...response, data: processStrapiResponse(response.data) };
+ }
+ export async function getClubPageBySlug(slug: string): Promise<ClubPage | null> {
+     const params = { filters: { slug: { $eq: slug } }, populate: { logo: true, banner: true, menuItems: true, category: true } };
+     const clubPageResponse = await fetchAPI('/club-pages', params);
+     const pages = processStrapiResponse(clubPageResponse.data);
+     return pages && pages.length > 0 ? pages[0] : null;
+ }
+ 
+ // --- FIRESTORE API FUNCTIONS ---
+ 
+ // --- Article Reactions ---
+ export const logArticleReaction = async (userId: string, articleId: string, type: 'like' | 'dislike'): Promise<void> => {
+     const reactionRef = doc(db, 'articleReactions', `${userId}_${articleId}`);
+     const statsRef = doc(db, 'articleStats', articleId);
+ 
+     await runTransaction(db, async (transaction) => {
+         const reactionDoc = await transaction.get(reactionRef);
+         if (reactionDoc.exists()) {
+             throw new Error("User has already reacted to this article.");
+         }
+ 
+         transaction.set(reactionRef, { userId, articleId, type, createdAt: new Date() });
+ 
+         const statsUpdate = type === 'like' 
+             ? { likeCount: increment(1) } 
+             : { dislikeCount: increment(1) };
+         transaction.set(statsRef, statsUpdate, { merge: true });
+     });
+ 
+     const action = type === 'like' ? 'ARTICLE_LIKE' : 'ARTICLE_DISLIKE';
+     await updateUserStats(userId, action);
+ };
+ 
+ export const getUserArticleReaction = async (userId: string, articleId: string): Promise<'like' | 'dislike' | null> => {
+     const reactionRef = doc(db, 'articleReactions', `${userId}_${articleId}`);
+     const docSnap = await getDoc(reactionRef);
+     if (docSnap.exists()) {
+         return docSnap.data().type;
+     }
+     return null;
+ };
+ 
+ export const getArticleStats = async (articleId: string): Promise<{ likeCount: number, dislikeCount: number }> => {
+     const statsRef = doc(db, 'articleStats', articleId);
+     const docSnap = await getDoc(statsRef);
+     if (docSnap.exists()) {
+         return docSnap.data() as { likeCount: number, dislikeCount: number };
+     }
+     return { likeCount: 0, dislikeCount: 0 };
+ };
+ 
+ const getAggregatedStats = async () => {
+     const postsSnapshot = await getDocs(collection(db, 'posts'));
+     const posts = postsSnapshot.docs.map(doc => doc.data() as Post);
+     return posts.reduce((acc, post) => {
+         if (post.categoryId) {
+             if (!acc[post.categoryId]) acc[post.categoryId] = { postCount: 0, lastPost: null };
+             acc[post.categoryId].postCount++;
+             if (!acc[post.categoryId].lastPost || post.createdAt.toMillis() > (acc[post.categoryId].lastPost?.createdAt.toMillis() || 0)) {
+                 acc[post.categoryId].lastPost = post;
+             }
+         }
+         return acc;
+     }, {} as { [key: string]: { postCount: number; lastPost: Post | null } });
+ }
+ 
+ export const getTeams = async (): Promise<Team[]> => {
+     const stats = await getAggregatedStats();
+     const teamsSnapshot = await getDocs(collection(db, 'teams'));
+     return teamsSnapshot.docs.map(doc => {
+         const teamData = { id: doc.id, ...doc.data() } as Team;
+         const teamStats = stats[doc.id] || { postCount: 0, lastPost: null };
+         return {
+             ...teamData,
+             postCount: teamStats.postCount,
+             lastPost: teamStats.lastPost ? { title: teamStats.lastPost.title, createdAt: teamStats.lastPost.createdAt } : null,
+         };
+     });
+ };
+ export const addTeam = async (team: Omit<Team, 'id'>): Promise<Team> => {
+     const docRef = await addDoc(collection(db, "teams"), team);
+     return { id: docRef.id, ...team };
+ };
+ export const updateTeam = async (teamId: string, teamData: Partial<Omit<Team, 'id'>>): Promise<void> => {
+     await updateDoc(doc(db, 'teams', teamId), teamData);
+ };
+ export const deleteTeam = async (teamId: string): Promise<void> => {
+     await deleteDoc(doc(db, 'teams', teamId));
+ };
+ 
+ export const getForumCategories = async (): Promise<ForumCategory[]> => {
+     const stats = await getAggregatedStats();
+     const categoriesSnapshot = await getDocs(query(collection(db, 'forum_categories'), orderBy('name')));
+     return categoriesSnapshot.docs.map(doc => {
+         const categoryData = { id: doc.id, ...doc.data() } as ForumCategory;
+         const categoryStats = stats[doc.id] || { postCount: 0, lastPost: null };
+         return {
+             ...categoryData,
+             postCount: categoryStats.postCount,
+             lastPost: categoryStats.lastPost ? { title: categoryStats.lastPost.title, createdAt: categoryStats.lastPost.createdAt } : null,
+         };
+     });
+ };
+ export const addForumCategory = async (category: Pick<ForumCategory, 'name' | 'description' | 'isPinned'>): Promise<ForumCategory> => {
+     const slug = slugify(category.name);
+     const docRef = await addDoc(collection(db, 'forum_categories'), { ...category, slug });
+     return { id: docRef.id, slug, ...category };
+ };
+ export const updateForumCategory = async (categoryId: string, categoryData: Partial<Pick<ForumCategory, 'name' | 'description' | 'isPinned'>>): Promise<void> => {
+     const dataToUpdate: Partial<ForumCategory> = { ...categoryData };
+     if (categoryData.name) dataToUpdate.slug = slugify(categoryData.name);
+     await updateDoc(doc(db, 'forum_categories', categoryId), dataToUpdate);
+ };
+ export const deleteForumCategory = async (categoryId: string): Promise<void> => {
+     await deleteDoc(doc(db, 'forum_categories', categoryId));
+ };
+ 
+ const getGamificationActionForReceiver = (reactionType: string): GamificationAction => {
+     switch (reactionType) {
+         case 'like': return 'RECEIVE_LIKE';
+         case 'golazo': return 'RECEIVE_GOLAZO';
+         case 'redcard': return 'RECEIVE_RED_CARD';
+         default: throw new Error(`Invalid reaction type: ${reactionType}`);
+     }
+ }
+ 
+ export const addReaction = async (
+     context: 'forum' | 'article',
+     contentId: { postId: string, commentId?: string | null },
+     reactionType: 'like' | 'golazo' | 'redcard',
+     userId: string,
+     authorId: string,
+ ): Promise<{ newReactions: { [key: string]: string[] }, userReaction: string | null }> => {
+     const docRef = context === 'forum'
+         ? (contentId.commentId ? doc(db, 'posts', contentId. postId, 'comments', contentId.commentId) : doc(db, 'posts', contentId.postId))
+         : doc(db, 'articleComments', contentId.commentId!);
+ 
+     try {
+         let finalReactions: { [key: string]: string[] } = {};
+         let finalUserReaction: string | null = null;
+         let gaveNewReaction = false;
+         let removedOldReaction = false;
+         let oldReactionType: string | null = null;
+         
+         await runTransaction(db, async (transaction) => {
+             const docSnap = await transaction.get(docRef);
+             if (!docSnap.exists()) throw new Error("Document does not exist!");
+ 
+             const data = docSnap.data() as Post | Comment;
+             const currentReactions = data.reactions || {};
+             const userReactions = data.userReactions || {};
+             const existingReaction = userReactions[userId];
+             
+             if (existingReaction) {
+                 oldReactionType = existingReaction;
+                 removedOldReaction = true;
+                 if (Array.isArray(currentReactions[existingReaction])) {
+                     currentReactions[existingReaction] = currentReactions[existingReaction].filter(uid => uid !== userId);
+                 }
+             }
+ 
+             if (existingReaction !== reactionType) {
+                 if (!Array.isArray(currentReactions[reactionType])) currentReactions[reactionType] = [];
+                 currentReactions[reactionType].push(userId);
+                 userReactions[userId] = reactionType;
+                 finalUserReaction = reactionType;
+                 gaveNewReaction = true;
+             } else {
+                 delete userReactions[userId];
+                 finalUserReaction = null;
+             }
+             
+             transaction.update(docRef, { reactions: currentReactions, userReactions });
+             finalReactions = currentReactions;
+         });
+ 
+         if (removedOldReaction && oldReactionType) {
+             await updateUserStats(authorId, getGamificationActionForReceiver(oldReactionType), 'subtract');
+             // **FIX**: Penalize the user who removed the reaction
+             await updateUserStats(userId, 'GIVE_REACTION', 'subtract');
+         }
+         if (gaveNewReaction) {
+             await updateUserStats(authorId, getGamificationActionForReceiver(reactionType), 'add');
+             await updateUserStats(userId, 'GIVE_REACTION', 'add');
+         }
+ 
+         return { newReactions: finalReactions, userReaction: finalUserReaction };
+ 
+     } catch (error) {
+         console.error("Error processing reaction transaction:", error);
+         if (error instanceof Error && error.message.includes("limit")) {
+             throw new Error("Límite diario de reacciones alcanzado.");
+         }
+         throw new Error("Failed to process reaction.");
+     }
+ };
+ 
+ 

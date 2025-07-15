@@ -14,9 +14,6 @@
     "nombre": {
       "type": "string"
     },
-    "color": {
-      "type": "string"
-    },
     "slug": {
       "type": "uid",
       "targetField": "nombre"
@@ -58,6 +55,14 @@
       "type": "component",
       "component": "shared.seo",
       "repeatable": false
+    },
+    "ContentBottom": {
+      "type": "richtext"
+    },
+    "color": {
+      "type": "customField",
+      "customField": "plugin::color-picker.color",
+      "regex": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
     }
   }
 }
