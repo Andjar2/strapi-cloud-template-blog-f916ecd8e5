@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "articulo_externos",
+  "info": {
+    "singularName": "articulo-externo",
+    "pluralName": "articulo-externos",
+    "displayName": "ArticulosExternos"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "titulo": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "contenido": {
+      "type": "richtext"
+    },
+    "url_original": {
+      "type": "text",
+      "required": true
+    },
+    "nombre_fuente": {
+      "type": "string"
+    },
+    "date_published": {
+      "type": "datetime"
+    },
+    "url_imagen_cover": {
+      "type": "text"
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "titulo"
+    }
+  }
+}

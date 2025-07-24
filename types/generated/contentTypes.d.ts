@@ -447,6 +447,43 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiArticuloExternoArticuloExterno
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'articulo_externos';
+  info: {
+    displayName: 'ArticulosExternos';
+    pluralName: 'articulo-externos';
+    singularName: 'articulo-externo';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    contenido: Schema.Attribute.RichText;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    date_published: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::articulo-externo.articulo-externo'
+    > &
+      Schema.Attribute.Private;
+    nombre_fuente: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'titulo'>;
+    titulo: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    url_imagen_cover: Schema.Attribute.Text;
+    url_original: Schema.Attribute.Text & Schema.Attribute.Required;
+  };
+}
+
 export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
   collectionName: 'authors';
   info: {
@@ -1093,6 +1130,7 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::about.about': ApiAboutAbout;
       'api::article.article': ApiArticleArticle;
+      'api::articulo-externo.articulo-externo': ApiArticuloExternoArticuloExterno;
       'api::author.author': ApiAuthorAuthor;
       'api::category.category': ApiCategoryCategory;
       'api::club-page.club-page': ApiClubPageClubPage;
