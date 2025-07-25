@@ -7,7 +7,7 @@
     "displayName": "ArticulosExternos"
   },
   "options": {
-    "draftAndPublish": false
+    "draftAndPublish": true
   },
   "pluginOptions": {},
   "attributes": {
@@ -35,6 +35,12 @@
     "slug": {
       "type": "uid",
       "targetField": "titulo"
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category",
+      "inversedBy": "articulos_externos"
     }
   }
 }

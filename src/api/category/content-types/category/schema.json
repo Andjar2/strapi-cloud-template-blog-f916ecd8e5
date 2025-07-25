@@ -32,6 +32,12 @@
     },
     "order": {
       "type": "integer"
+    },
+    "articulos_externos": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::articulo-externo.articulo-externo",
+      "mappedBy": "category"
     }
   }
 }
