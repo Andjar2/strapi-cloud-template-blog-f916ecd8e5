@@ -473,6 +473,7 @@ export interface ApiArticuloExternoArticuloExterno
       Schema.Attribute.Private;
     nombre_fuente: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    seo: Schema.Attribute.Component<'shared.seo', false>;
     slug: Schema.Attribute.UID<'titulo'>;
     titulo: Schema.Attribute.String &
       Schema.Attribute.Required &

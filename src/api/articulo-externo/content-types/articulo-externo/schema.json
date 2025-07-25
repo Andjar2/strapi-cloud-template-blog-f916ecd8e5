@@ -41,6 +41,11 @@
       "relation": "manyToOne",
       "target": "api::category.category",
       "inversedBy": "articulos_externos"
+    },
+    "seo": {
+      "type": "component",
+      "component": "shared.seo",
+      "repeatable": false
     }
   }
 }
