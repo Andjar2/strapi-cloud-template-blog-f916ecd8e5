@@ -459,7 +459,10 @@ export interface ApiArticuloExternoArticuloExterno
     draftAndPublish: true;
   };
   attributes: {
-    category: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
+    categories: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::category.category'
+    >;
     contenido: Schema.Attribute.RichText;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -532,7 +535,7 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   attributes: {
     articles: Schema.Attribute.Relation<'oneToMany', 'api::article.article'>;
     articulos_externos: Schema.Attribute.Relation<
-      'oneToMany',
+      'manyToMany',
       'api::articulo-externo.articulo-externo'
     >;
     createdAt: Schema.Attribute.DateTime;

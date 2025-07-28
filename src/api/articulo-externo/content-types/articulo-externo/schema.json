@@ -36,9 +36,9 @@
       "type": "uid",
       "targetField": "titulo"
     },
-    "category": {
+    "categories": {
       "type": "relation",
-      "relation": "manyToOne",
+      "relation": "manyToMany",
       "target": "api::category.category",
       "inversedBy": "articulos_externos"
     },

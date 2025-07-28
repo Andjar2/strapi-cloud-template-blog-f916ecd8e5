@@ -35,9 +35,9 @@
     },
     "articulos_externos": {
       "type": "relation",
-      "relation": "oneToMany",
+      "relation": "manyToMany",
       "target": "api::articulo-externo.articulo-externo",
-      "mappedBy": "category"
+      "mappedBy": "categories"
     }
   }
 }
