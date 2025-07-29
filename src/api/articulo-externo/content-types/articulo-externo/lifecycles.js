@@ -1,65 +1,91 @@
-// ruta: src/api/articulos-externo/content-types/articulos-externo/lifecycles.js
+'use strict';
 
-module.exports = {
-  async beforeCreate(event) {
-    console.log('--- Hook "beforeCreate" de ArticuloExterno activado ---');
-    await assignCategoriesBasedOnContent(event);
-  },
+/**
+ * =================================================================
+ * FUNCIÓN 1: GENERAR SLUG (CORREGIDA PARA ACENTOS Y CARACTERES ESPECIALES)
+ * =================================================================
+ */
+const generateSlug = (event) => {
+  const { data } = event.params;
+  if (data.titulo) {
+    console.log("-> Tarea 1: Generando slug a partir del título...");
+    
+    const normalizedTitle = data.titulo
+      .toString()
+      .toLowerCase()
+      .trim()
+      .normalize('NFD') // Descompone los caracteres con tilde (ej: "é" -> "e" + "´")
+      .replace(/[\u0300-\u036f]/g, ''); // Elimina los acentos y diacríticos
 
-  async beforeUpdate(event) {
-    console.log('--- Hook "beforeUpdate" de ArticuloExterno activado ---');
-    await assignCategoriesBasedOnContent(event);
-  },
+    data.slug = normalizedTitle
+      .replace(/\s+/g, '-')       // Reemplaza espacios con -
+      .replace(/[^\w\-]+/g, '')   // Elimina caracteres que no sean palabras, números o guiones
+      .replace(/\-\-+/g, '-');    // Reemplaza múltiples guiones con uno solo
+      
+    console.log(`   Slug generado: ${data.slug}`);
+  }
 };
 
 /**
- * Función auxiliar para escanear el contenido y asignar múltiples categorías.
- * @param {object} event - El evento del ciclo de vida.
+ * =================================================================
+ * FUNCIÓN 2: ASIGNAR CATEGORÍAS
+ * =================================================================
  */
 const assignCategoriesBasedOnContent = async (event) => {
-  const { data } = event.params;
-  console.log('PASO 1: Datos iniciales que llegan al hook:', JSON.stringify(data, null, 2));
+    const { data } = event.params;
+    console.log("-> Tarea 2: Asignando categorías...");
+    const RELATION_FIELD_NAME = 'categories';
 
-  // ¡IMPORTANTE! Revisa si el nombre de tu campo de relación es 'categories'. Si no, cámbialo aquí.
-  const RELATION_FIELD_NAME = 'categories';
+    if (data.titulo || data.contenido) {
+        try {
+            const categories = await strapi.entityService.findMany('api::category.category', {
+                fields: ['id', 'name'],
+            });
 
-  if (data.titulo || data.contenido) {
-    try {
-      const categories = await strapi.entityService.findMany('api::category.category', {
-        fields: ['id', 'name'],
-      });
+            if (!categories || categories.length === 0) {
+                console.log("   ADVERTENCIA: No se encontraron categorías.");
+                return;
+            }
 
-      if (!categories || categories.length === 0) {
-        console.log("ADVERTENCIA: No se encontraron categorías en la base de datos.");
-        return;
-      }
-      console.log('PASO 2: Se encontraron las siguientes categorías:', categories.map(c => c.name));
+            const articleText = ((data.titulo || '') + ' ' + (data.contenido || '')).toLowerCase();
+            const matchedCategoryIds = [];
+            for (const category of categories) {
+                // Normaliza también el nombre de la categoría para una comparación robusta
+                const normalizedCategoryName = category.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                if (articleText.includes(normalizedCategoryName)) {
+                    matchedCategoryIds.push(category.id);
+                }
+            }
 
-      const articleText = ((data.titulo || '') + ' ' + (data.contenido || '')).toLowerCase();
-      console.log('PASO 3: Analizando el texto del artículo (primeros 150 caracteres):', articleText.substring(0, 150));
-
-      const matchedCategoryIds = [];
-      for (const category of categories) {
-        if (articleText.includes(category.name.toLowerCase())) {
-          matchedCategoryIds.push(category.id);
-          console.log(`-> Coincidencia encontrada: '${category.name}' (ID: ${category.id})`);
+            if (matchedCategoryIds.length > 0) {
+                console.log(`   IDs de categorías encontradas: [${matchedCategoryIds.join(', ')}]`);
+                data[RELATION_FIELD_NAME] = matchedCategoryIds;
+            } else {
+                console.log('   No se encontró ninguna coincidencia de categoría.');
+            }
+        } catch (e) {
+            console.error("   ERROR CRÍTICO asignando categorías:", e);
         }
-      }
-
-      if (matchedCategoryIds.length > 0) {
-        console.log(`PASO 4: IDs de categorías encontradas: [${matchedCategoryIds.join(', ')}]`);
-        
-        // Asignamos el array de IDs al campo correcto.
-        data[RELATION_FIELD_NAME] = matchedCategoryIds;
-
-      } else {
-        console.log('PASO 4: No se encontró ninguna coincidencia de categoría en el texto.');
-      }
-      
-      console.log('PASO 5: Datos finales que se enviarán para guardar:', JSON.stringify(data, null, 2));
-
-    } catch (e) {
-      console.error("ERROR CRÍTICO en el lifecycle hook:", e);
     }
-  }
+};
+
+/**
+ * =================================================================
+ * LIFECYCLE HOOKS PRINCIPALES
+ * =================================================================
+ */
+module.exports = {
+  async beforeCreate(event) {
+    console.log('--- Hook "beforeCreate" activado ---');
+    generateSlug(event);
+    await assignCategoriesBasedOnContent(event);
+    console.log('--- Hook "beforeCreate" finalizado ---');
+  },
+
+  async beforeUpdate(event) {
+    console.log('--- Hook "beforeUpdate" activado ---');
+    generateSlug(event);
+    await assignCategoriesBasedOnContent(event);
+    console.log('--- Hook "beforeUpdate" finalizado ---');
+  },
 };
