@@ -38,6 +38,12 @@
       "relation": "manyToMany",
       "target": "api::articulo-externo.articulo-externo",
       "mappedBy": "categories"
+    },
+    "page": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::page.page",
+      "inversedBy": "categories"
     }
   }
 }
