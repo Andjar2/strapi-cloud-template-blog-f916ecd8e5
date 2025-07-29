@@ -1,5 +1,49 @@
 import type { Schema, Struct } from '@strapi/strapi';
 
+export interface MenuDropdown extends Struct.ComponentSchema {
+  collectionName: 'components_menu_dropdowns';
+  info: {
+    displayName: 'Dropdown';
+  };
+  attributes: {
+    sections: Schema.Attribute.Relation<'oneToMany', 'api::section.section'>;
+    title: Schema.Attribute.String;
+  };
+}
+
+export interface MenuLink extends Struct.ComponentSchema {
+  collectionName: 'components_menu_links';
+  info: {
+    displayName: 'link';
+    icon: 'link';
+  };
+  attributes: {
+    description: Schema.Attribute.Text;
+    icon: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
+    name: Schema.Attribute.String;
+    url: Schema.Attribute.String;
+  };
+}
+
+export interface MenuMenuItems extends Struct.ComponentSchema {
+  collectionName: 'components_menu_menu_items';
+  info: {
+    displayName: 'MenuItems';
+  };
+  attributes: {};
+}
+
+export interface MenuMenuLink extends Struct.ComponentSchema {
+  collectionName: 'components_menu_menu_links';
+  info: {
+    displayName: 'MenuLink';
+  };
+  attributes: {
+    title: Schema.Attribute.String;
+    url: Schema.Attribute.String;
+  };
+}
+
 export interface SharedMedia extends Struct.ComponentSchema {
   collectionName: 'components_shared_media';
   info: {
@@ -113,6 +157,10 @@ export interface SharedSlider extends Struct.ComponentSchema {
 declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
+      'menu.dropdown': MenuDropdown;
+      'menu.link': MenuLink;
+      'menu.menu-items': MenuMenuItems;
+      'menu.menu-link': MenuMenuLink;
       'shared.media': SharedMedia;
       'shared.menu-item': SharedMenuItem;
       'shared.open-graph': SharedOpenGraph;
