@@ -12,6 +12,7 @@
     "strapi": "strapi"
   },
   "dependencies": {
+    "@strapi/blocks-react-renderer": "^1.0.2",
     "@strapi/plugin-cloud": "5.15.0",
     "@strapi/plugin-color-picker": "^5.18.0",
     "@strapi/plugin-seo": "^2.0.8",
@@ -33,5 +34,8 @@
   "engines": {
     "node": "22.14.0",
     "npm": "11.5.1"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }
